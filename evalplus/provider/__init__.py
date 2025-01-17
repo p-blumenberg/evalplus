@@ -23,8 +23,10 @@ def make_model(
     # hf only
     attn_implementation="eager",
     device_map=None,
+    pre_init_model=None,
+    pre_init_tokenizer=None,
     # gptqmodel only
-    gptqmodel_backend: str = 'auto',
+    gptqmodel_backend: str = "auto",
     gguf_file: str = None,
 ) -> DecoderBase:
     if backend == "vllm":
@@ -43,7 +45,7 @@ def make_model(
             enable_prefix_caching=enable_prefix_caching,
             enable_chunked_prefill=enable_chunked_prefill,
             dtype=dtype,
-            gguf_file=gguf_file
+            gguf_file=gguf_file,
         )
     elif backend == "hf":
         from evalplus.provider.hf import HuggingFaceDecoder
@@ -61,6 +63,8 @@ def make_model(
             trust_remote_code=trust_remote_code,
             dtype=dtype,
             gguf_file=gguf_file,
+            pre_init_model=pre_init_model,
+            pre_init_tokenizer=pre_init_tokenizer,
         )
     elif backend == "openai":
         from evalplus.provider.openai import OpenAIChatDecoder
@@ -119,4 +123,3 @@ def make_model(
             trust_remote_code=trust_remote_code,
             gptqmodel_backend=gptqmodel_backend,
         )
-

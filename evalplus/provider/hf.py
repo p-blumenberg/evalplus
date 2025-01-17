@@ -19,6 +19,8 @@ class HuggingFaceDecoder(DecoderBase):
         attn_implementation: str = "eager",
         device_map: str = None,
         gguf_file: str = None,
+        pre_init_model=None,
+        pre_init_tokenizer=None,
         **kwargs,
     ):
         super().__init__(name=name, **kwargs)
@@ -29,7 +31,7 @@ class HuggingFaceDecoder(DecoderBase):
             "trust_remote_code": self.trust_remote_code,
             "torch_dtype": getattr(torch, self.dtype),
             "attn_implementation": attn_implementation,  # "eager", "flash_attention_2", "sdpa"
-            "gguf_file": gguf_file
+            "gguf_file": gguf_file,
         }
 
         self.skip_special_tokens = True
@@ -38,21 +40,29 @@ class HuggingFaceDecoder(DecoderBase):
 
         self.force_base_prompt = force_base_prompt
 
-        # gguf format embeds tokenizer and is not compatible with hf tokenizer `use_fast` param
-        tokenizer_kwargs = {}
-        if gguf_file is None:
-            tokenizer_kwargs["use_fast"] = False
+        if pre_init_tokenizer:
+            self.tokenizer = pre_init_tokenizer
         else:
-            tokenizer_kwargs["gguf_file"] = gguf_file
-        self.tokenizer = AutoTokenizer.from_pretrained(name, **tokenizer_kwargs)
+            # gguf format embeds tokenizer and is not compatible with hf tokenizer `use_fast` param
+            tokenizer_kwargs = {}
+            if gguf_file is None:
+                tokenizer_kwargs["use_fast"] = False
+            else:
+                tokenizer_kwargs["gguf_file"] = gguf_file
+            self.tokenizer = AutoTokenizer.from_pretrained(name, **tokenizer_kwargs)
+
         if self.is_direct_completion():  # no chat template
             self.eos += extra_eos_for_direct_completion(dataset)
         else:  # with chat template
             self.eos += ["\n```\n"]
 
         print(f"{self.eos = }")
-        self.model = AutoModelForCausalLM.from_pretrained(name, **kwargs)
-        self.model = self.model.to(self.device)
+
+        if pre_init_model is not None:
+            self.model = pre_init_model
+        else:
+            self.model = AutoModelForCausalLM.from_pretrained(name, **kwargs)
+            self.model = self.model.to(self.device)
 
     def is_direct_completion(self) -> bool:
         return self.force_base_prompt or self.tokenizer.chat_template is None
