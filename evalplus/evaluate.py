@@ -364,6 +364,7 @@ def evaluate(
         with open(result_path, "w") as f:
             json.dump(results, f)
 
+    return results
 
 def main():
     from fire import Fire
